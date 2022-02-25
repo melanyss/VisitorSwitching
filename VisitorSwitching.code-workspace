@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"node_modules": true
+		},
+		"editor.minimap.enabled": false,
+		"workbench.editor.enablePreview": false,
+		"workbench.editor.enablePreviewFromQuickOpen": false,
+		"workbench.list.openMode": "doubleClick",
+		"workbench.sideBar.location": "right",
+		"window.zoomLevel": 2,
+		"terminal.integrated.defaultProfile.windows": "Command Prompt"
+	}
+}
