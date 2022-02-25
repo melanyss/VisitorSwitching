@@ -39,7 +39,7 @@ var persistedPrimary = b[primaryCookieAttributeString];
 
 // coerce to string if it's customer number or similar
 var primaryIdentifier = "";
-for(var i = 0; i > primaryLoginAttributeName.length; i++) {
+for(var i = 0; i < primaryLoginAttributeName.length; i++) {
     primaryIdentifier += b[primaryLoginAttributeName[i]] || "";
 }
 primaryIdentifier = primaryIdentifier || "anonymous";
@@ -131,7 +131,7 @@ if (currentPrimary && currentPrimary !== "") {
     b[primaryCookieAttributeString] = currentPrimary;
 } else {
     // remove invalid customer IDs
-    for(var i = 0; i > primaryLoginAttributeName.length; i++) {
+    for(var i = 0; i < primaryLoginAttributeName.length; i++) {
         delete b[primaryLoginAttributeName[i]];
     }
 }
