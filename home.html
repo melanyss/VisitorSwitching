@@ -1,0 +1,168 @@
+<html>
+
+    <head>
+
+        <title>my testing as page</title>
+
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+        <script type="text/javascript">
+
+            var products = ["beer", "wine", "glass", "bottle", "ketchup", "cookies", "coca cola", "iceberg letucce"];
+            //products[Math.floor(Math.random()*products.length)]
+            var utag_data = {
+                "site_type": "multi_page",
+                "customer_email": "rui.machado1@tealium.com",
+                "page_attr": "page_attr",
+                "product": "cars",
+                "plus_s" : "+"
+                
+            };
+            utag_data["ecommerce.purchase.products"] = 'contains:  "Business Premier"';
+
+
+             
+
+
+
+
+            var _getRootDomain = function () {
+                var a = "" + location.hostname;
+                var b = a.split(".");
+                var c = (/\.co\.|\.com\.|\.org\.|\.edu\.|\.net\.|\.asn\./.test(a)) ? 3 : 2;
+                var d = b.splice(b.length - c, c).join(".");
+
+                return d;
+            };
+            var _createCookie = function (cookieName, cookieValue) {
+                var expireDate = new Date();
+                expireDate.setDate(expireDate.getDate() + 365);
+                document.cookie = cookieName + "=" + cookieValue + ";domain=" + _getRootDomain() + ";path=/; expires=" + expireDate.toGMTString() + ";";
+            };
+            var _getCookieValue = function (cookieName) {
+                var value = "; " + document.cookie;
+                var parts = value.split("; " + cookieName + "=");
+                if (parts.length === 2)
+                    return parts.pop().split(";").shift();
+            };
+
+
+
+            if(_getCookieValue("persisted") === "true") {
+                if(_getCookieValue("sha256") === "true" && _getCookieValue("exclude_stitching_keys_in_event") !== "true") {
+                    utag_data.user_mobile_sha256_1 = _getCookieValue("sha256key");
+                }
+                if(_getCookieValue("md5") === "true" && _getCookieValue("exclude_stitching_keys_in_event") !== "true") {
+                    utag_data.user_mobile_md5_1 = _getCookieValue("md5key");
+                }
+            }
+
+
+
+            $(document).ready(function() {
+                $("button").on("click", function() {
+                    console.log("button click");
+                    var payload = {
+                        tealium_event: "any"
+                    }
+                    if(_getCookieValue("sha256") === "true" && _getCookieValue("exclude_stitching_keys_in_event") !== "true") {
+                        payload.user_mobile_sha256_1 = ($(".txtbox#user_mobile_sha256").val() || "").trim();
+                    }
+                    if(_getCookieValue("md5") === "true" && _getCookieValue("exclude_stitching_keys_in_event") !== "true") {
+                        payload.user_mobile_md5_1 = ($(".txtbox#user_mobile_md5").val() || "").trim();
+                    }
+
+                    utag.link(payload);
+                });
+                $('#page_reload').on("change", function() {
+                    if(this.checked) {
+                        _createCookie("persisted", "true");
+                    } else {
+                        _createCookie("persisted", "false");
+                    }      
+                });
+                $('.chkbox#user_mobile_sha256').on("change", function() {
+                    if(this.checked) {
+                        _createCookie("sha256", "true");
+                        _createCookie("sha256key", ($(".txtbox#user_mobile_sha256").val() || "").trim());
+                    } else {
+                        _createCookie("sha256", "false");
+                    }      
+                });
+                $('.chkbox#user_mobile_md5').on("change", function() {
+                    if(this.checked) {
+                        _createCookie("md5", "true");
+                        _createCookie("md5key", ($(".txtbox#user_mobile_md5").val() || "").trim());
+                    } else {
+                        _createCookie("md5", "false");
+                    }      
+                });
+                $('.chkbox#exclude_stitching_keys_in_event').on("change", function() {
+                    if(this.checked) {
+                        _createCookie("exclude_stitching_keys_in_event", "true");
+                    } else {
+                        _createCookie("exclude_stitching_keys_in_event", "false");
+                    }      
+                });
+                if(_getCookieValue("persisted") === "true") {
+                    $('#page_reload').prop('checked', true);
+                }   
+                if(_getCookieValue("exclude_stitching_keys_in_event") === "true") {
+                    $('.chkbox#exclude_stitching_keys_in_event').prop('checked', true);
+                }   
+                if(_getCookieValue("sha256") === "true") {
+                    $('.chkbox#user_mobile_sha256').prop('checked', true);
+                    $(".txtbox#user_mobile_sha256").val(_getCookieValue("sha256key"));
+                }    
+                if(_getCookieValue("md5") === "true") {
+                    $('.chkbox#user_mobile_md5').prop('checked', true);
+                    $(".txtbox#user_mobile_md5").val(_getCookieValue("md5key"));
+                }     
+                
+                $( ".txtbox#user_mobile_sha256" ).focus(function() {
+                    $('.chkbox#user_mobile_sha256').prop('checked', false);
+                });
+                $( ".txtbox#user_mobile_md5" ).focus(function() {
+                    $('.chkbox#user_mobile_md5').prop('checked', false);
+                });
+            });
+
+        </script>
+        
+        <script src="//tags.tiqcdn.com/utag/services-rpcm/event-api/qa/utag.sync.js"></script>
+        <script src="//tags.tiqcdn.com/utag/services-rpcm/event-api/qa/utag.js" async></script>
+
+    </head>
+
+    <body>
+
+
+        <div class="my_test_class"></div>
+
+        <p>http://localhost:3000/tiq/eventapi/event-api.html</p>
+        
+        <hr>
+
+        <p>
+            user_mobile_sha256 <input class="txtbox" type="text" name="" id="user_mobile_sha256">
+            <input type="checkbox" class="chkbox" name="" id="user_mobile_sha256"> (include)
+        </p>
+        <p>
+            user_mobile_md5 <input class="txtbox" type="text" name="" id="user_mobile_md5">
+            <input type="checkbox" class="chkbox" name="" id="user_mobile_md5"> (include)
+        </p>
+
+        <p>
+            <button>Send Event</button>
+        </p>
+        <p>
+            <input type="checkbox" class="chkbox" name="" id="page_reload"> (persist for page reload)
+        </p>
+        <!-- <p>
+            <input type="checkbox" class="chkbox" name="" id="exclude_stitching_keys_in_event"> (exclude stitching keys in even, to test VID's uniqueness)
+        </p> -->
+
+    </body>
+
+
+</html>

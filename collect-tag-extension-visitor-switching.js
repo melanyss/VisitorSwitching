@@ -1,165 +1,134 @@
-/**
+/*
+ *  Author      : rui.machado@tealium.com
+ *
  *  Scope       : Tealium Collect (/event endpoint)
  * 
  *  Condition   : n/a
  * 
  *  Description : "Visitor Switching" - Adds support for multiple users on a single device.
  * 
- *                Version 2.2 (June 2021)
- * 
- *                Works by assuming a new user when we see a new login-based ID and resetting the cookie-based
- *                anonymous ID.
- * 
- *                Accepts strings and positive non-zero numbers.  Any other types are removed from the Collect payload and not used for "switching"
- * 
- *                ONLY works if you use a custom Collect template and the  /events endpoint (otherwise the first-seen ID is persisted in a
- *                third-party cookie).
- * 
- *                Internal doc: https://community.tealiumiq.com/t5/Technical-Solutions/quot-Visitor-Switching-quot-Using-the-event-endpoint-in-the/m-p/30782#M169
- * 
- *                Version 2.3 (March 2022) :: RM
- *                -- added logic to persist previous known VIDs to localstorage and reused them.
- *                -- added option for multiple identifiers
+ *                Version 1.0
+ *                  -Initial release
+ *                  -When given keys or combination of are provided, it generates a new VID for CDH creating a new profile
+ *                  -If a key or combination of was previously provided, it should reuse the previously associated VID
+ *                  -key/combination and associated VID should be stored in local cookies for reuse
  * 
  */
+ 
+/*
+ *
+ * Provide a list of all datalayer properties that defines the different ids
+ *
+ * E.G.:
+ *      empty ([]):
+ *              user id = vid
+ *      1 property provided (["user_mobile_sha256"]):
+ *              user id = user_mobile_sha256
+ *      multiple properties provided (["user_mobile_sha256", "user_mobile_md5"...]):
+ *              user id = user_mobile_sha256 + user_mobile_md5 + ...
+ *
+ */
+var dataLayerIdentifiers = ["user_mobile_sha256_1", "user_mobile_md5_1"];
 
 
-// the name of your login-based id in the data layer (specify an array)
-var primaryLoginAttributeName = ["user_mobile_sha256", "user_mobile_md5"];
-
-// the parent cookie (usually utag_main)
-var parentCookieName = "utag_main";
-// the subcookie name inside the parent to store the last-seen id
-var subcookieName = "last_identifier";
 
 
-// you shouldn't need to change anything below this comment unless you need to change the logic itself
-var primaryCookieAttributeString = "cp." + parentCookieName + "_" + subcookieName;
-var persistedPrimary = b[primaryCookieAttributeString];
+/*
+ *
+ * main logic, should not be changed
+ *
+ */
 
-// coerce to string if it's customer number or similar
-var primaryIdentifier = "";
-for(var i = 0; i < primaryLoginAttributeName.length; i++) {
-    primaryIdentifier += b[primaryLoginAttributeName[i]] || "";
-}
-primaryIdentifier = primaryIdentifier || "anonymous";
-var currentPrimary = cleanVisitorId(primaryIdentifier);
-
-var currentVID = b["cp.utag_main_v_id"];
-
-var trackingObject = {};
-
-// persist the first-seen (original) v_id
-// it can be very helpful to have this as a verification that everything's working as expected
-var firstSeenVidSubcookieName = "original_v_id"
-var firstSeenVidAttributeString = "cp." + parentCookieName + "_" + firstSeenVidSubcookieName;
-// if we haven't already persisted the first-seen v_id (before any resets), persist it.
-if (typeof b[firstSeenVidAttributeString] === "undefined") {
-    trackingObject[firstSeenVidSubcookieName] = b["cp.utag_main_v_id"];
-    utag.loader.SC("utag_main", trackingObject);
-    // also update it in the 
-    b[firstSeenVidAttributeString] = b["cp.utag_main_v_id"];
-    log("Persisted original v_id", b["cp.utag_main_v_id"]);
-}
-
-// check if the current login is the same as the past one we've seen (if any)
-var loginChanged = (persistedPrimary && currentPrimary && currentPrimary !== "" && currentPrimary !== persistedPrimary);
-
-log("Original v_id", b[firstSeenVidAttributeString]);
-
-
-b['tealium_visitor_id'] = currentVID // some SDKs send a different 'tealium_visitor_id', that is persisted in more durable device storage - override that.
-
-// login is different, so reset the device-based cookie value to "create a new device" 
-// from the perspective of the UDH
-if (loginChanged) {
-    log("Previous login", persistedPrimary);
-    log("Current login", currentPrimary);
-    log("Previous v_id", currentVID);
-    
-    // generate a new utag_main_v_id
-    utag.v_id = undefined; // clear out any cached VID (important for utag.ut.vi to work as expected)
-    var previousViIds = JSON.parse(localStorage.getItem("previous_vi_ids") || "{}");
-    var newVID = previousViIds[primaryIdentifier];
-    if(newVID) {
-        log("VID has been found and used previously!");
-    } else {
-        newVID = utag.ut.vi((new Date()).getTime()); // generate a new VID
-        previousViIds[primaryIdentifier] = newVID;
-        localStorage.setItem("previous_vi_ids", JSON.stringify(previousViIds));
-        log("VID not found, new one generated!");
-    }
-    
-    // update the cookie and dataLayer (and caches) with the new v_id
-    utag.v_id = newVID;
-    trackingObject = {};
-    trackingObject["v_id"] = newVID;
-    utag.loader.SC("utag_main", trackingObject);
-    
-    b["cp.utag_main_v_id"] = newVID; // replace the previously read cookie value with updated one
-    b["tealium_visitor_id"] = newVID; // same as above
-    utag.ut.visitor_id = newVID;
-    b["ut.visitor_id"] = newVID; // also update the previously-read value
-    
-    u.visitor_id = newVID; // used for DLE
-    
-    log("Current v_id", newVID);
-    log("Current utag_main_v_id", b["cp.utag_main_v_id"]);
-    log("Current tealium_visitor_id", b["tealium_visitor_id"]);
-} else {
-    var previousViIds = JSON.parse(localStorage.getItem("previous_vi_ids") || "{}");
-    var currentVIDCheck = previousViIds[primaryIdentifier];
-    if(currentVIDCheck) {
-        log("VID has been found and used previously!");
-    } else {
-        previousViIds[primaryIdentifier] = currentVID;
-        localStorage.setItem("previous_vi_ids", JSON.stringify(previousViIds));
-        log("VID not found, adding current to the history!");
-    }
-    log("Current v_id", currentVID);
-    log("Current login", (currentPrimary || persistedPrimary));
-}
-
-
-// persist any seen customer IDs, after checking for changes
-if (currentPrimary && currentPrimary !== "") {
-    log("Persisted login ", currentPrimary);
-    // update the cookie with the new customer number
-    trackingObject = {}; // reset in case it changed before
-    trackingObject[subcookieName] = currentPrimary;
-    utag.loader.SC(parentCookieName, trackingObject);
-    b[primaryCookieAttributeString] = currentPrimary;
-} else {
-    // remove invalid customer IDs
-    for(var i = 0; i < primaryLoginAttributeName.length; i++) {
-        delete b[primaryLoginAttributeName[i]];
-    }
-}
-
-log('') // intentionally empty to add a newline
-
-function log(label, value) {
-    var prefix = "vs | "
-    // no logging output unless on Dev or QA or logging is explicitly active
-    if ((b["tealium_environment"] === "dev" || b["tealium_environment"] === "qa") || b["cp.utagdb"] === "true") {
-        if (label === "") {
-            console.log(prefix + "----");
+var helperMethods = {
+    // persists data on  utag_main cookie
+    setPersistData: function(key, value) {
+        var ids = JSON.parse(utag.loader.RC("utag_main")["ids"] || '{}');
+        ids[key] = value;
+        utag.loader.SC("utag_main", { ids: JSON.stringify(ids) });
+    },
+    // gets data from utag_main cookie
+    getPersistData: function(key) {
+        var ids = JSON.parse(utag.loader.RC("utag_main")["ids"] || '{}');
+        return ids[key];
+    },
+    // generates a new guid for each new identifier
+    generateGuid: function() {
+        var gg1 = utag.ut.pad((new Date()).getTime(), 12);
+            gg2 = "" + Math.random();
+        gg1 += utag.ut.pad(gg2.substring(2, gg2.length), 16);
+        try {
+            gg1 += utag.ut.pad((navigator.plugins.length ? navigator.plugins.length : 0), 2);
+            gg1 += utag.ut.pad(navigator.userAgent.length, 3);
+            gg1 += utag.ut.pad(document.URL.length, 4);
+            gg1 += utag.ut.pad(navigator.appVersion.length, 3);
+            gg1 += utag.ut.pad(screen.width + screen.height + parseInt((screen.colorDepth) ? screen.colorDepth : screen.pixelDepth), 5)
+        } catch (e) {
+            gg1 += "12345"
+        }
+        return gg1;
+    },
+    // gets a guid for the provided identifier, persists known identifiers/guids on utag_main cookie
+    // returns a new guid if new identifier
+    // returns an existing guid based on known identifier
+    getGuid: function(identifier) {
+        var id = this.getPersistData(identifier);
+        if(id) {
+            return id;
         } else {
-            while (label.length < 30) {
-              label = label + " ";
-            }
-            if(value) {
-                console.log(prefix + label + ": " + value);
-            } else {
-                console.log(prefix + label);
-            }            
-        }   
-        
+            var newId = this.generateGuid();
+            this.setPersistData(identifier, newId);
+            return newId;
+        }
     }
-}
+}, 
+// processes main logic
+// returns an ID
+process = function() {
+    var keyId = "";
+        
+    // concatenate keys
+    for(var i = 0; i < dataLayerIdentifiers.length; i++) {
+        keyId += b[dataLayerIdentifiers[i]] || "";
+    }
+    
+    // if custom key is present provide an ID for it
+    if(keyId) {
+        return {
+            isNew: true,
+            new: helperMethods.getGuid(keyId),
+            old: b["cp.utag_main_v_id"]
+        };
+    }
+    
+    // if no custom key is present provide the default VID
+    return {
+        isNew: false,
+        new: b["cp.utag_main_v_id"],
+        old: b["cp.utag_main_v_id"]
+    };
+};
+var processedIdentifiers = process();
 
-function cleanVisitorId (id) {
-    if (typeof id === "string" && id !== "") return id
-    if (typeof id === "number" && id > 0) return String(id)
-    return false
+/*
+ * change all datalayer identifiers to the new ID
+ */
+if (b['tealium_visitor_id']) {
+    b['tealium_visitor_id'] = processedIdentifiers.new;
 }
+if (b['_t_visitor_id']) {
+    b['_t_visitor_id'] = processedIdentifiers.new;
+}
+if (b['cp.utag_main_v_id']) {
+    b['cp.utag_main_v_id'] = processedIdentifiers.new;
+}
+if (b['ut.visitor_id']) {
+    b['ut.visitor_id'] = processedIdentifiers.new;
+}
+if(processedIdentifiers.isNew) {
+    b['main_profile_vid'] = processedIdentifiers.old;
+}
+/*
+ * change tag template new visitor id to cope with DLE
+ */
+u.visitor_id = processedIdentifiers.new; 
+

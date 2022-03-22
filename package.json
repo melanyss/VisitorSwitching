@@ -1,0 +1,22 @@
+{
+  "name": "visitorswitching",
+  "version": "1.0.0",
+  "description": "",
+  "main": "collect-tag-extension-visitor-switching.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ruipedromachado/VisitorSwitching.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ruipedromachado/VisitorSwitching/issues"
+  },
+  "homepage": "https://github.com/ruipedromachado/VisitorSwitching#readme",
+  "dependencies": {
+    "express": "^4.17.3"
+  }
+}
