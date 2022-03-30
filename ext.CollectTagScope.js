@@ -51,6 +51,10 @@ var helperMethods = {
         var ids = JSON.parse(utag.loader.RC("utag_main")["ids"] || '{}');
         return ids[key];
     },
+    // gets utag_main vid
+    getVid: function() {
+        return utag.loader.RC("utag_main")["v_id"] || "";
+    },
     // generates a new guid for each new identifier
     generateGuid: function() {
         var gg1 = utag.ut.pad((new Date()).getTime(), 12);
@@ -96,7 +100,8 @@ process = function() {
         return {
             isNew: true,
             new: helperMethods.getGuid(keyId),
-            old: b["cp.utag_main_v_id"]
+            old: b["cp.utag_main_v_id"],
+            base: helperMethods.getVid()
         };
     }
     
@@ -104,7 +109,8 @@ process = function() {
     return {
         isNew: false,
         new: b["cp.utag_main_v_id"],
-        old: b["cp.utag_main_v_id"]
+        old: b["cp.utag_main_v_id"],
+        base: helperMethods.getVid()
     };
 };
 var processedIdentifiers = process();
@@ -125,7 +131,7 @@ if (b['ut.visitor_id']) {
     b['ut.visitor_id'] = processedIdentifiers.new;
 }
 if(processedIdentifiers.isNew) {
-    b['main_profile_vid'] = processedIdentifiers.old;
+    b['main_profile_vid'] = processedIdentifiers.base;
 }
 /*
  * change tag template new visitor id to cope with DLE
